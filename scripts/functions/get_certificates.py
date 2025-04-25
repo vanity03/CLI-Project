@@ -2,89 +2,81 @@ import ssl
 import socket
 import datetime
 
-def get_ssl_certificate_info_primary(hostname, port=443):
-    context = ssl.create_default_context()
+def get_ssl_certificate_info(hostname, port=443, timeout=5):
+    def fetch(verify_hostname):
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = verify_hostname
+        ctx.verify_mode = ssl.CERT_REQUIRED
+        if not verify_hostname:
+            ctx.load_default_certs()
 
-    try:
-        with socket.create_connection((hostname, port), timeout=5) as sock:
-            with context.wrap_socket(sock, server_hostname=hostname) as ssock:
-                cert = ssock.getpeercert()
-        
-        issuer = dict(x[0] for x in cert.get('issuer', []))
-        issued_by = issuer.get('organizationName', 'Unknown')
+        try:
+            with socket.create_connection((hostname, port), timeout=timeout) as sock:
+                with ctx.wrap_socket(sock,
+                                    server_hostname=hostname if verify_hostname else None) as ssock:
+                    cert = ssock.getpeercert()
+        except Exception:
+            return None, None, None, None, True  # ← PRIDANÉ
 
-        not_after = datetime.datetime.strptime(cert['notAfter'], "%b %d %H:%M:%S %Y %Z")
-        ttl_days = (not_after - datetime.datetime.utcnow()).days
+        if not cert:
+            return "Unknown", -1, -1, 0, False   # ← SAN_COUNT = 0, error=False
 
+        # === issuer ===
+        issuer = None
+        for rdn in cert.get('issuer', []):
+            for key, val in rdn:
+                if key == 'organizationName':
+                    issuer = val
+                    break
+            if issuer:
+                break
+        if not issuer:
+            issuer = "Unknown"
 
-    except ssl.SSLCertVerificationError:
-        issued_by = None
-        ttl_days = 0
+        # === TTL ===
+        na = cert.get('notAfter')
+        try:
+            exp = datetime.datetime.strptime(na, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=datetime.timezone.utc)
+            now = datetime.datetime.now(datetime.timezone.utc)
+            ttl = (exp - now).days
+        except Exception:
+            ttl = -1
 
-    except Exception as e:
-        issued_by = None
-        ttl_days = 0
+        # === Validity Length ===
+        nb = cert.get('notBefore')
+        try:
+            start = datetime.datetime.strptime(nb, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=datetime.timezone.utc)
+            validity = (exp - start).days
+        except Exception:
+            validity = -1
+
+        # === SAN count ===
+        san = cert.get("subjectAltName", [])
+        san_count = len([entry for entry in san if entry[0] == "DNS"])
+
+        return issuer, ttl, validity, san_count, False
+
+    # 1. Prvý pokus
+    result = fetch(verify_hostname=True)
+
+    # 2. Ak chyba, fallback bez verifikácie hostname
+    if result[-1]:  # chyba
+        result = fetch(verify_hostname=False)
+        if result[-1]:  # stále chyba
+            return {
+                "Certificate_Issuer": None,
+                "Certificate_TTL": None,
+                "Validity_Length": None,
+                "SAN_Count": None
+            }
+
+    issuer, ttl, validity, san_count = result[:4]
 
     return {
-        "Certificate_Issuer": issued_by,
-        "Certificate_TTL": ttl_days,
+        "Certificate_Issuer": issuer,
+        "Certificate_TTL": ttl,
+        "Validity_Length": validity,
+        "SAN_Count": san_count
     }
-
-
-
-def get_ssl_certificate_info_secondary(hostname, port=443):
-    # If the first method can't find CA, try this one
-
-    context = ssl.create_default_context()
-    context.check_hostname = False
-    context.verify_mode = ssl.CERT_REQUIRED
-    context.load_default_certs()
-
-    try:
-        with socket.create_connection((hostname, port)) as sock:
-            with context.wrap_socket(sock, server_hostname=hostname) as sslsock:
-                cert = sslsock.getpeercert()
-                
-                if not cert:
-                    return {'Certificate_Issuer': None, 'Certificate_TTL': 0}
-
-                issuer = cert.get("issuer", [])
-                issued_by = None
-                if isinstance(issuer, list):
-                    for field in issuer:
-                        if isinstance(field, tuple) and field[0][0] == 'organizationName':
-                            issued_by = field[0][1]
-                            break
-                
-                if not issued_by:
-                    issued_by = None  
-
-                not_after_str = cert.get("notAfter")
-                ttl_days = 0
-                if not_after_str:
-                    try:
-                        not_after = datetime.datetime.strptime(not_after_str, "%b %d %H:%M:%S %Y %Z")
-                        not_after = not_after.replace(tzinfo=datetime.UTC)
-                        now = datetime.datetime.now(datetime.UTC)
-                        ttl_days = (not_after - now).days
-                    except ValueError:
-                        ttl_days = 0
-
-                return {
-                    "Certificate_Issuer": issued_by,
-                    "Certificate_TTL": ttl_days,
-                }
-
-    except Exception:
-        return {'Certificate_Issuer': None, 'Certificate_TTL': 0}
-
-
-def get_ssl_certificate_info(hostname):
-    cert_info = get_ssl_certificate_info_primary(hostname, 443)
-
-    if cert_info['Certificate_Issuer'] is None and cert_info['Certificate_TTL'] in [0, None]:
-        cert_info = get_ssl_certificate_info_secondary(hostname, 443)
-
-    return cert_info
 
 

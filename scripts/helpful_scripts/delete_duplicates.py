@@ -1,7 +1,7 @@
 # https://mnk.sk/fake/ - Zoznam fake domen
 
 
-file_path = ""
+file_path = "C:\\Users\\matus\\CLI Project\\lists\\malicious.txt"
 
 with open(f"{file_path}", "r") as f:
     lines = sorted(set(line.strip() for line in f))

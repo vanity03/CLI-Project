@@ -8,97 +8,59 @@
 from datetime import datetime
 import whois
 
+def age_to_bucket(days):
+    """Kategorizuje počet dní do bucketu 1–4, inak -1"""
+    if days < 0:
+        return -1
+    elif days < 30:
+        return 1
+    elif days < 91:
+        return 2
+    elif days < 365:
+        return 3
+    else:
+        return 4
+    
 
 def who_is(domain):
-    """Function which uses the pyton_whois library to fetch whois data
-    Arguments:
-    domain - domain name, string
-
-    Returns registrar data, update and creation value
-    """
-    
     try:
         res = whois.whois(domain)
 
-        updated_date = res.updated_date
-        if isinstance(updated_date, list):
-            updated_date = str(updated_date[0]) 
-        else:
-            updated_date = str(updated_date)
+        registrar = res.registrar if res.registrar else "Unknown"
 
-        # Counting days between create/update and now, to calculate a value
-        # Value 0 - no data
-        # Value 1 - Domain is less than 30 days old / was updated less than 30 days ago
-        # Value 2 - Domain is less than 90 days old (but older than 30 days) / less than 90 days ago
-        # Value 3 - Domain is less than 365 days old (but older than 90 days) / less than 365 days ago
-        # Value 4 - Domain is older than 365 days / more than 365 days ago
+        # Creation
+        try:
+            creation_date = res.creation_date
+            if isinstance(creation_date, list):
+                creation_date = creation_date[0]
+            creation_days = (datetime.now() - creation_date).days
+            creation_bucket = age_to_bucket(creation_days)
+        except Exception:
+            creation_bucket = -1
+            creation_date = None
 
-        striped_creation = datetime.strptime(str(res.creation_date), "%Y-%m-%d %H:%M:%S")
-        days_since_creation = (datetime.now() - striped_creation).days
+        # Update
+        try:
+            updated_date = res.updated_date
+            if isinstance(updated_date, list):
+                updated_date = updated_date[0]
+            update_days = (datetime.now() - updated_date).days
+            update_bucket = age_to_bucket(update_days)
+        except Exception:
+            update_bucket = -1
 
-        striped_update = datetime.strptime(updated_date, "%Y-%m-%d %H:%M:%S")
-        days_since_update = (datetime.now() - striped_update).days
-        
-        update_value = 0
-        creation_value = 0
+        # Registration Period
+        try:
+            expiration_date = res.expiration_date
+            if isinstance(expiration_date, list):
+                expiration_date = expiration_date[0]
+            registration_days = (expiration_date - creation_date).days if creation_date and expiration_date else -1
+        except Exception:
+            registration_days = -1
 
-        if (days_since_creation < 30):
-            creation_value = 1
-        
-
-        elif (days_since_creation >= 30 and days_since_creation < 91): 
-            creation_value = 2
-        
-
-        elif (days_since_creation >= 91 and days_since_creation < 365):
-            creation_value = 3
-
-        elif (days_since_creation >= 365):
-            creation_value = 4
-
-        else:
-            creation_value = 0
-
-
-        if (days_since_update < 30):
-            update_value = 1
-        
-
-        elif (days_since_update >= 30 and days_since_update < 91): 
-            update_value = 2
-        
-
-        elif (days_since_update >= 91 and days_since_update < 365):
-            update_value = 3
-
-        elif (days_since_update >= 365):
-            update_value = 4
-
-        else:
-            update_value = 0
-
- 
-        return res.registrar, res.registrant, creation_value, update_value, res.country
+        return registrar, creation_bucket, update_bucket, registration_days
     
-    # TODO: Error
-    except Exception as e:
-        print(f"Error fetching WHOIS data: {e}")
-        return None
+    except Exception:
+        return "Unknown", -1, -1, -1
 
 
-result = who_is("michaelkors.sk")
-print(result)
-
-# merrellvypredaj.sk
-# meshkibratislava.sk
-# mexxbratislava.sk
-# michaelkors-kabelka.sk
-# michaelkors-slovensko.sk
-# michaelkors.sk
-# michaelkorsbratislava.sk
-# michaelkorskabelka.sk
-# michaelkorssk.sk
-# michaelkorsslovensko.sk
-# microsoftonline.sk
-# microsoftonlline.sk
-# milujemeobuv.sk

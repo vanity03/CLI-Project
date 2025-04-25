@@ -1247,3 +1247,4 @@ znaleczilina.sk
 zoznam-znalcov-sr.sk
 zoznam-znalcov.sk
 zozu.sk
+082765.sk
