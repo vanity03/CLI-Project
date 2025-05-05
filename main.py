@@ -108,37 +108,27 @@ def scan_domain(domain):
 
 
 def explain_single(domain_df, pipe, background, model_type="linear"):
-    """
-    Explain predictions for a single sample, using a model-type specific SHAP explainer.
-    model_type: 'linear', 'tree' (Tree: RF, XGB)
-    """
-
-    # First, scale both background and domain_df using pipe's scaler
-    scaler = pipe.named_steps["scale"]
     model = pipe.named_steps["model"]
 
-    scaled_background = pd.DataFrame(
-        scaler.transform(background),
-        columns=background.columns
-    )
-    scaled_domain = pd.DataFrame(
-        scaler.transform(domain_df),
-        columns=domain_df.columns
-    )
-
-    # Choose the right SHAP explainer
     if model_type == "linear":
+        scaler = pipe.named_steps["scale"]
+        scaled_background = pd.DataFrame(scaler.transform(background), columns=background.columns)
+        scaled_domain = pd.DataFrame(scaler.transform(domain_df), columns=domain_df.columns)
+
         masker = shap.maskers.Independent(scaled_background)
         explainer = shap.LinearExplainer(model, masker=masker)
+        shap_vals = explainer(scaled_domain)
     elif model_type == "tree":
-        explainer = shap.TreeExplainer(model, data=scaled_background)
+        # SHAP for tree models works best on unscaled numerical input
+        background = background.astype(float)
+        domain_df = domain_df.astype(float)
+
+        explainer = shap.TreeExplainer(model, data=background)
+        shap_vals = explainer(domain_df)
     else:
         raise ValueError(f"Unsupported model_type={model_type}")
 
-    # Explain using SHAP - explain which attribute plays most part
-    shap_vals = explainer(scaled_domain)
-
-    pred_class = model.predict(scaled_domain)[0]
+    pred_class = model.predict(domain_df)[0]
     if shap_vals.values.ndim == 3:
         vals = shap_vals.values[0, pred_class, :]
     else:
@@ -152,8 +142,6 @@ def explain_single(domain_df, pipe, background, model_type="linear"):
 
     return values
 
-
-# Function for classifications, extract features, apply models, majority voting, results
 def classify_with_models(domain, log_pipe, rf_pipe, xgb_pipe, target_encodings, global_mean, background):
     features = scan_domain(domain)
     if features is None:
@@ -162,9 +150,19 @@ def classify_with_models(domain, log_pipe, rf_pipe, xgb_pipe, target_encodings, 
     domain_df = pd.DataFrame([features])
     domain_df.drop(columns=["Domain"], inplace=True)
 
+    # Target encoding
     for col in ["Registrar", "SSL_Issuer", "Server", "Location"]:
         if col in domain_df.columns:
             domain_df[col] = domain_df[col].map(target_encodings[col]).fillna(global_mean)
+
+    # Ensure all expected features are present and aligned
+    expected_columns = background.columns.tolist()
+    missing = set(expected_columns) - set(domain_df.columns)
+    for col in missing:
+        domain_df[col] = global_mean  # Default fallback for unknown categories
+
+    domain_df = domain_df[expected_columns]
+    domain_df = domain_df.astype(float)
 
     votes = [
         log_pipe.predict(domain_df)[0],
@@ -184,6 +182,8 @@ def classify_with_models(domain, log_pipe, rf_pipe, xgb_pipe, target_encodings, 
         "result": "MALICIOUS" if final else "BENIGN",
         "shap": shap_results
     }
+
+
 
 
 def main():
