@@ -118,6 +118,7 @@ def explain_single(domain_df, pipe, background, model_type="linear"):
         masker = shap.maskers.Independent(scaled_background)
         explainer = shap.LinearExplainer(model, masker=masker)
         shap_vals = explainer(scaled_domain)
+
     elif model_type == "tree":
         # SHAP for tree models works best on unscaled numerical input
         background = background.astype(float)
@@ -125,12 +126,15 @@ def explain_single(domain_df, pipe, background, model_type="linear"):
 
         explainer = shap.TreeExplainer(model, data=background)
         shap_vals = explainer(domain_df)
+
     else:
         raise ValueError(f"Unsupported model_type={model_type}")
 
     pred_class = model.predict(domain_df)[0]
+
     if shap_vals.values.ndim == 3:
         vals = shap_vals.values[0, pred_class, :]
+
     else:
         vals = shap_vals.values[0, :]
 
@@ -141,6 +145,9 @@ def explain_single(domain_df, pipe, background, model_type="linear"):
     )
 
     return values
+
+
+
 
 def classify_with_models(domain, log_pipe, rf_pipe, xgb_pipe, target_encodings, global_mean, background):
     features = scan_domain(domain)
@@ -155,11 +162,11 @@ def classify_with_models(domain, log_pipe, rf_pipe, xgb_pipe, target_encodings, 
         if col in domain_df.columns:
             domain_df[col] = domain_df[col].map(target_encodings[col]).fillna(global_mean)
 
-    # Ensure all expected features are present and aligned
+    
     expected_columns = background.columns.tolist()
     missing = set(expected_columns) - set(domain_df.columns)
     for col in missing:
-        domain_df[col] = global_mean  # Default fallback for unknown categories
+        domain_df[col] = global_mean 
 
     domain_df = domain_df[expected_columns]
     domain_df = domain_df.astype(float)
