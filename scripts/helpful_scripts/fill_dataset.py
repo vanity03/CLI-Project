@@ -22,7 +22,6 @@ def load_domains_from_file(filename):
     
 good = load_domains_from_file("lists\\benign.txt")
 bad = load_domains_from_file("lists\\malicious.txt")
-# mix = load_domains_from_file("lists\\smaller_list.txt")
 mix = load_domains_from_file("lists\\all.txt")
 
 

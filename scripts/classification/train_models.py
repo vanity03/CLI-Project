@@ -28,7 +28,7 @@ from sklearn.model_selection import GridSearchCV
 
 
 # Loading the dataset
-df = pd.read_csv("scripts\\classification\\datasets\\dataset2.csv", header=0, na_values=["?"])
+df = pd.read_csv("scripts\\classification\\datasets\\dataset.csv", header=0, na_values=["?"])
 
 """ Preprocessing the dataset - cleaning, target encoding, retyping, dropping NaN """
 
@@ -86,48 +86,31 @@ X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, te
 
 
 
-# """ ====== Logistic Regression ====== """
+""" ====== Logistic Regression ====== """
 
-pipe = make_pipeline(
-    StandardScaler(),
-    LogisticRegression(
-        # hyperparametre
-        penalty='l1',
-        solver='liblinear',
-        C=1.0,
-        max_iter=5000
-    )
-)
+scaler = StandardScaler()
+X_train_scaled = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
+X_test_scaled = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns)
 
-# Cross-validation score LR
-cv_score_lr = cross_val_score(pipe, X_train, y_train, cv=10, scoring='accuracy')
+# Train Logistic Regression
+log_reg = LogisticRegression(penalty='l1', solver='liblinear', C=1.0, max_iter=5000)
+log_reg.fit(X_train_scaled, y_train)
 
-# Training LR
-pipe.fit(X_train, y_train)  
-y_pred_lr = pipe.predict(X_test)
+# Predictions
+y_pred_lr = log_reg.predict(X_test_scaled)
 
-# Evaluation LR
+# Evaluation
 test_score_lr = accuracy_score(y_test, y_pred_lr)
-
-
 print("--- Logistic Regression ---")
-print("Cross-validation scores:", cv_score_lr)
-print("Average CV Score:", cv_score_lr.mean())
-
-
-# Accuracy LR
 print("Test Accuracy:", test_score_lr)
-
 print("Precision, F1, Recall, Support - LR")
 print(classification_report(y_test, y_pred_lr, digits=5))
-
 print("Confusion Matrix")
-cm = confusion_matrix(y_test, y_pred_lr)
-print(cm)
+print(confusion_matrix(y_test, y_pred_lr))
 
 """ ====== Random Forest ====== """
 rf = RandomForestClassifier(
-    # hyperparametre
+    # Hyperparameters
     n_estimators=300,
     max_depth=20,
     max_features='log2',
@@ -165,7 +148,7 @@ print(cm)
 
 """ ====== XGB ====== """
 xgb = XGBClassifier(
-    # hyperparametre
+    # Hyperparameters
     eval_metric="logloss",
     subsample = 0.9,
     reg_lambda = 1,
@@ -212,23 +195,22 @@ print("Top important features according to SHAP values:")
 for feature, importance in sorted_features[:30]: 
     print(f"{feature}: {importance}")
 
-# # # Save trained models
-# # try:
-# #     joblib.dump(pipe, "scripts\\classification\\models\\log_reg_model.pkl")
-# #     joblib.dump(rf, "scripts\\classification\\models\\rf_model.pkl")
-# #     joblib.dump(xgb, "scripts\\classification\\models\\xgb_model.pkl")
+# Save trained models
+try:
+    joblib.dump(log_reg, "scripts\\classification\\models\\log_reg_model.pkl")
+    joblib.dump(rf, "scripts\\classification\\models\\rf_model.pkl")
+    joblib.dump(xgb, "scripts\\classification\\models\\xgb_model.pkl")
 
-# #     # Save target encoding and global mean
-# #     joblib.dump(target_encodings, "scripts\\classification\\models\\target_encodings.pkl")
-# #     joblib.dump(global_mean, "scripts\\classification\\models\\global_mean.pkl")
+    # Save target encoding and global mean
+    joblib.dump(target_encodings, "scripts\\classification\\models\\target_encodings.pkl")
+    joblib.dump(global_mean, "scripts\\classification\\models\\global_mean.pkl")
 
-# #     # Save StandardScaler used for LR
-# #     scaler = StandardScaler()
-# #     scaler.fit(X_train)
-# #     joblib.dump(scaler, "scripts\\classification\\models\\scaler.pkl")
+    # Save StandardScaler used for LR
+    scaler = StandardScaler()
+    scaler.fit(X_train)
+    joblib.dump(scaler, "scripts\\classification\\models\\scaler.pkl")
 
-# #     print("\nModels trained and saved successfully!")
+    print("\nModels trained and saved successfully!")
 
-# # # TODO: Add proper error message
-# # except Exception as e: 
-# #     print("There was a problem with saving the models.")
+except Exception as e: 
+    print("There was a problem with saving the models.")
