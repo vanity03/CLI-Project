@@ -1,6 +1,7 @@
 import requests
 
-# mapa na normalizaciu nazvov - niekedy sluzba vratila The Netherlands namiesto Netherlands, tak nech je to jednotne
+
+# map for normalizing names - sometimes the tool returned "The Netherlands" instead of "Netherlands", so this is added to unify the results
 COUNTRY_NORMALIZATION = {
     "The Netherlands": "Netherlands",
     "Czech Republic": "Czechia",
@@ -10,7 +11,7 @@ COUNTRY_NORMALIZATION = {
     "United States": "USA",
 
 
-    # miesto na pridavanie dalsich, ak si vsimneme chybu
+    # place to add other
 }
 
 def location(domain):

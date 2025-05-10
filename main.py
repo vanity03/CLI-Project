@@ -120,7 +120,6 @@ def explain_single(domain_df, pipe, background, model_type="linear"):
         shap_vals = explainer(scaled_domain)
 
     elif model_type == "tree":
-        # SHAP for tree models works best on unscaled numerical input
         background = background.astype(float)
         domain_df = domain_df.astype(float)
 

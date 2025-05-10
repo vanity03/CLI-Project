@@ -1,7 +1,4 @@
-# Registrar
 # Registrant
-# CountryCode
-# RegisteredCountry
 # last update
 # creation date
 
@@ -9,7 +6,7 @@ from datetime import datetime
 import whois
 
 def age_to_bucket(days):
-    """Kategorizuje počet dní do bucketu 1–4, inak -1"""
+    """Categorizing results into numbers/buckets of 1-4 or if error or missing returns -1"""
     if days < 0:
         return -1
     elif days < 30:
@@ -49,18 +46,10 @@ def who_is(domain):
         except Exception:
             update_bucket = -1
 
-        # Registration Period
-        try:
-            expiration_date = res.expiration_date
-            if isinstance(expiration_date, list):
-                expiration_date = expiration_date[0]
-            registration_days = (expiration_date - creation_date).days if creation_date and expiration_date else -1
-        except Exception:
-            registration_days = -1
 
-        return registrar, creation_bucket, update_bucket, registration_days
+        return registrar, creation_bucket, update_bucket
     
     except Exception:
-        return "Unknown", -1, -1, -1
+        return "Unknown", -1, -1
 
 

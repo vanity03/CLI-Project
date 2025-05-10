@@ -16,10 +16,10 @@ def get_ssl_certificate_info(hostname, port=443, timeout=5):
                                     server_hostname=hostname if verify_hostname else None) as ssock:
                     cert = ssock.getpeercert()
         except Exception:
-            return None, None, None, None, True  # ← PRIDANÉ
+            return None, None
 
         if not cert:
-            return "Unknown", -1, -1, 0, False   # ← SAN_COUNT = 0, error=False
+            return "Unknown", -1
 
         # === issuer ===
         issuer = None
@@ -42,27 +42,13 @@ def get_ssl_certificate_info(hostname, port=443, timeout=5):
         except Exception:
             ttl = -1
 
-        # === Validity Length ===
-        nb = cert.get('notBefore')
-        try:
-            start = datetime.datetime.strptime(nb, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=datetime.timezone.utc)
-            validity = (exp - start).days
-        except Exception:
-            validity = -1
-
-        # === SAN count ===
-        san = cert.get("subjectAltName", [])
-        san_count = len([entry for entry in san if entry[0] == "DNS"])
-
-        return issuer, ttl, validity, san_count, False
-
-    # 1. Prvý pokus
+    # 1. first try with verifying hostname
     result = fetch(verify_hostname=True)
 
-    # 2. Ak chyba, fallback bez verifikácie hostname
+    # 2. error - if fails, we try without verifying hostname
     if result[-1]:  # chyba
         result = fetch(verify_hostname=False)
-        if result[-1]:  # stále chyba
+        if result[-1]:
             return {
                 "Certificate_Issuer": None,
                 "Certificate_TTL": None,

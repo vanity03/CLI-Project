@@ -61,7 +61,3 @@ def check_dns(domain):
     dmarc_status = int(dmarc_records not in ([], ["0"], ["Timeout"], ["Error"]))
 
     return a_record, num_ips, ip_as_int, spf_status, mx_status, dkim_status, dmarc_status
-
-# # Example call
-# result = check_dns("basetools.sk")
-# print(result)
