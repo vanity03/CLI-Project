@@ -1,7 +1,3 @@
-# Registrant
-# last update
-# creation date
-
 from datetime import datetime
 import whois
 
