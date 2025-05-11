@@ -63,6 +63,3 @@ def get_ssl_certificate_info(hostname, port=443, timeout=5):
         "Certificate_TTL": ttl,
     }
 
-
-host = "decathlon.sk"
-print(get_ssl_certificate_info(host))
