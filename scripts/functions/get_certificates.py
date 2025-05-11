@@ -42,27 +42,27 @@ def get_ssl_certificate_info(hostname, port=443, timeout=5):
         except Exception:
             ttl = -1
 
+        return issuer, ttl
+    
     # 1. first try with verifying hostname
     result = fetch(verify_hostname=True)
 
     # 2. error - if fails, we try without verifying hostname
-    if result[-1]:  # chyba
+    if not result or result[-1] is None:  # chyba
         result = fetch(verify_hostname=False)
-        if result[-1]:
+        if not result or result[-1] is None:
             return {
                 "Certificate_Issuer": None,
                 "Certificate_TTL": None,
-                "Validity_Length": None,
-                "SAN_Count": None
             }
 
-    issuer, ttl, validity, san_count = result[:4]
+    issuer, ttl = result[:2]
 
     return {
         "Certificate_Issuer": issuer,
         "Certificate_TTL": ttl,
-        "Validity_Length": validity,
-        "SAN_Count": san_count
     }
 
 
+host = "decathlon.sk"
+print(get_ssl_certificate_info(host))
