@@ -87,15 +87,6 @@ def sequences(domain):
 
 
 
-'''
-Levenshtein Distance between 2 domains, to indicate whether typosquatting was used.
-Takes 2 arguments:
-domain - input domain, which will be compared with a whitelist of known popular domains
-whitelist - list of popular domains
-Returns:
-min_levenshtein - minimal value found, which will indicate whether typosquatting was used or not
-'''
-
 def levenshtein_distance(domain, whitelist):
     min_levenshtein = float('inf')
     

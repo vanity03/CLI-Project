@@ -15,3 +15,5 @@ pip install -r requirements.txt
 ```bash
 python main.py upjs.sk
 ```
+
+4. **A warning usually appears about feature names after running the code, that is also due to Random Forest working a bit different than other models. This warning is harmless and does not influence the output.**
