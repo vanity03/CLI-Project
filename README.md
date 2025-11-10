@@ -6,7 +6,13 @@ git clone https://github.com/vanity03/CLI-Project.git
 cd CLI-Project
 ```
 
-2. **Install the requirements**
+2. **Activate venv and Install the requirements**
+```bash
+python -m venv venv
+venv\Scripts\activate
+python -m pip install --upgrade pip setuptools wheel
+```
+
 ```bash
 pip install -r requirements.txt
 ```
